@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tornea Pro V12.2 - Fix Final</title>
+    <title>Tornea Pro V12.3 - Fix Reanudación</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: system-ui; -webkit-tap-highlight-color: transparent; }
@@ -22,7 +22,7 @@
 
 <div id="app" class="max-w-md mx-auto p-4 pb-20">
     <header class="flex justify-between items-center mb-4">
-        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V12.2</h1>
+        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V12.3</h1>
         <div id="fase-info" class="badge bg-slate-800 px-2 py-1 rounded text-[10px] text-yellow-400 font-bold">Inicio</div>
     </header>
 
@@ -46,7 +46,7 @@
                         </div>
                     </div>
                     <div class="flex items-center justify-center gap-4 bg-slate-800 p-3 rounded-lg">
-                        <span class="text-[10px] uppercase font-bold text-slate-300 text-center">¿3º y 4º Puesto?</span>
+                        <span class="text-[10px] uppercase font-bold text-slate-300">¿3º y 4º Puesto?</span>
                         <input type="checkbox" id="cfg-34" style="width: 20px; height: 20px;" checked>
                     </div>
                 </div>
@@ -60,7 +60,8 @@
 let state = { 
     parejas: [], ronda: 1, resultados: 0, pistasReales: [1, 2, 3], 
     tiempoRonda: 20, con34: true, enProgreso: false, modificado: false,
-    partidosRondaActual: [] // Para guardar quién juega en cada pista
+    partidosRondaActual: [],
+    enFaseFinal: false // Clave para la reanudación correcta
 };
 
 function guardarEnDisco() { localStorage.setItem('tornea_v12_backup', JSON.stringify(state)); }
@@ -78,7 +79,13 @@ window.onload = function() {
 function restaurarTorneo() {
     state = JSON.parse(localStorage.getItem('tornea_v12_backup'));
     document.getElementById('area-recuperacion').innerHTML = "";
-    if(state.ronda > 3) { hacerFaseFinal(); } else { renderPantallaJuego(); mostrarPartidos(); }
+    if(state.enFaseFinal) { 
+        renderPantallaJuego(); 
+        hacerFaseFinal(); 
+    } else { 
+        renderPantallaJuego(); 
+        mostrarPartidos(); 
+    }
 }
 
 function borrarCache() { localStorage.removeItem('tornea_v12_backup'); location.reload(); }
@@ -120,10 +127,9 @@ function renderPantallaJuego() {
 function mostrarPartidos() {
     state.resultados = 0; document.getElementById('fase-info').innerText = `Ronda ${state.ronda}/3`;
     const rondas = [[[0,5], [1,4], [2,3]],[[0,3], [5,1], [4,2]],[[0,1], [3,4], [5,2]]];
-    const actual = rondas[state.ronda-1];
-    state.partidosRondaActual = actual; // GUARDAR REFERENCIA REAL
+    state.partidosRondaActual = rondas[state.ronda-1];
     const cont = document.getElementById('partidos-cont'); cont.innerHTML = "";
-    actual.forEach((pIds, i) => {
+    state.partidosRondaActual.forEach((pIds, i) => {
         cont.innerHTML += generarTarjetaPartido(i, state.parejas[pIds[0]], state.parejas[pIds[1]], state.pistasReales[i], state.tiempoRonda);
     });
     refrescarTabla();
@@ -133,7 +139,7 @@ function generarTarjetaPartido(id, p1, p2, pista, tiempo, esFinal = false) {
     return `
     <div class="card border-l-4 ${esFinal?'border-pink-600':'border-green-500'}">
         <div class="flex justify-between items-center mb-3">
-            <span class="${esFinal?'final-tag':'pista-tag'} uppercase">Pista ${pista}</span>
+            <span class="${esFinal?'final-tag':'pista-tag'} uppercase">Pista ${pista} ${id==='f'?'(FINAL)':''}</span>
             <span id="t-${id}" class="text-yellow-400 font-mono font-bold text-lg">${tiempo}:00</span>
         </div>
         <div class="flex items-center gap-2">
@@ -148,7 +154,7 @@ function generarTarjetaPartido(id, p1, p2, pista, tiempo, esFinal = false) {
 }
 
 function iniciarCronoMaster() {
-    ejecutarBocina(); let t = (state.ronda > 3 ? 25 : state.tiempoRonda) * 60;
+    ejecutarBocina(); let t = (state.enFaseFinal ? 25 : state.tiempoRonda) * 60;
     const interval = setInterval(() => {
         t--; if(t <= 0) { clearInterval(interval); ejecutarBocina(); desbloquearTodo(); }
         document.querySelectorAll('[id^="t-"]').forEach(d => d.innerText = `${Math.floor(t/60)}:${(t%60)<10?'0':''}${t%60}`);
@@ -163,50 +169,39 @@ function desbloquearTodo() {
 }
 
 function confirmarPista(idxPista) {
-    let idPareja1, idPareja2;
-    
-    // DETERMINAR QUÉ PAREJAS JUEGAN SEGÚN LA PANTALLA
-    if (state.ronda <= 3) {
-        idPareja1 = state.partidosRondaActual[idxPista][0];
-        idPareja2 = state.partidosRondaActual[idxPista][1];
-    } else {
-        if (idxPista === 'f') { idPareja1 = state.parejas[0].id; idPareja2 = state.parejas[1].id; }
-        if (idxPista === '34') { idPareja1 = state.parejas[2].id; idPareja2 = state.parejas[3].id; }
-    }
+    let p0, p1;
+    const finalistas = [...state.parejas].sort((a,b) => b.pts - a.pts || b.dg - a.dg);
 
-    // BUSCAR EL OBJETO REAL EN EL ARRAY ORIGINAL POR SU ID
-    const p0 = state.parejas.find(p => p.id == idPareja1);
-    const p1 = state.parejas.find(p => p.id == idPareja2);
+    if (!state.enFaseFinal) {
+        const pIds = state.partidosRondaActual[idxPista];
+        p0 = state.parejas.find(p => p.id == pIds[0]);
+        p1 = state.parejas.find(p => p.id == pIds[1]);
+    } else {
+        if (idxPista === 'f') { p0 = finalistas[0]; p1 = finalistas[1]; }
+        if (idxPista === '34') { p0 = finalistas[2]; p1 = finalistas[3]; }
+    }
 
     const m0 = parseInt(document.getElementById(`m-${idxPista}-0`).value);
     const m1 = parseInt(document.getElementById(`m-${idxPista}-1`).value);
 
-    // Lógica de Puntos
-    if (m0 > m1) { p0.pts += 3; } 
-    else if (m1 > m0) { p1.pts += 3; } 
-    else { p0.pts += 1; p1.pts += 1; }
-
-    // Diferencia de Juegos
-    p0.dg += (m0 - m1);
-    p1.dg += (m1 - m0);
+    if (m0 > m1) { p0.pts += 3; } else if (m1 > m0) { p1.pts += 3; } else { p0.pts += 1; p1.pts += 1; }
+    p0.dg += (m0 - m1); p1.dg += (m1 - m0);
     p0.pj++; p1.pj++;
 
     document.getElementById(`b-save-${idxPista}`).classList.add('hidden');
-    state.resultados++; 
-    refrescarTabla(); 
-    guardarEnDisco();
+    state.resultados++; refrescarTabla(); guardarEnDisco();
 
-    let limite = (state.ronda > 3) ? (state.con34 ? 2 : 1) : 3;
+    let limite = state.enFaseFinal ? (state.con34 ? 2 : 1) : 3;
     if(state.resultados === limite) {
-        document.getElementById('zona-controles').innerHTML = `<button onclick="proximaRonda()" class="btn-green bg-blue-600 mt-4 uppercase text-xs tracking-widest font-black">${state.ronda<3?'Siguiente Ronda':'Torneo Finalizado'}</button>`;
+        document.getElementById('zona-controles').innerHTML = `<button onclick="proximaRonda()" class="btn-green bg-blue-600 mt-4 uppercase text-xs font-black">${state.ronda<3?'Siguiente Ronda':'Torneo Finalizado'}</button>`;
     }
 }
 
 function proximaRonda() { 
-    if(state.ronda >= 4) { borrarCache(); return; }
-    state.ronda++; 
+    if(state.enFaseFinal) { borrarCache(); return; }
+    if(state.ronda === 3) { state.enFaseFinal = true; } else { state.ronda++; }
     document.getElementById('zona-controles').innerHTML = ""; 
-    if(state.ronda > 3) { hacerFaseFinal(); } else { mostrarPartidos(); }
+    if(state.enFaseFinal) { hacerFaseFinal(); } else { mostrarPartidos(); }
     guardarEnDisco();
 }
 
@@ -215,17 +210,17 @@ function hacerFaseFinal() {
     document.getElementById('controles-master').innerHTML = `<button onclick="iniciarCronoMaster()" class="btn-play">▶ Iniciar Finales</button><button onclick="desbloquearTodo()" class="btn-fast">⚡ Desbloquear</button>`;
     const cont = document.getElementById('partidos-cont'); cont.innerHTML = "";
     
-    // Usamos el ID interno de la pareja tras ordenar la tabla de liga
     const finalistas = [...state.parejas].sort((a,b) => b.pts - a.pts || b.dg - a.dg);
     
-    cont.innerHTML += `<p class="text-[10px] font-black text-pink-500 uppercase tracking-widest text-center mb-1">Gran Final</p>`;
+    cont.innerHTML += `<p class="text-[10px] font-black text-pink-500 uppercase text-center mb-1 italic">Gran Final</p>`;
     cont.innerHTML += generarTarjetaPartido('f', finalistas[0], finalistas[1], state.pistasReales[0], 25, true);
     
     if(state.con34) {
-        cont.innerHTML += `<p class="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center mt-4 mb-1 italic">3º y 4º Puesto</p>`;
+        cont.innerHTML += `<p class="text-[10px] font-black text-blue-400 uppercase text-center mt-4 mb-1 italic">3º y 4º Puesto</p>`;
         cont.innerHTML += generarTarjetaPartido('34', finalistas[2], finalistas[3], state.pistasReales[1], 25, false);
     }
     document.getElementById('zona-controles').innerHTML = `<button onclick="borrarCache()" class="btn-green bg-slate-700 mt-8 text-[10px] tracking-widest">FINALIZAR Y BORRAR TODO</button>`;
+    refrescarTabla();
 }
 
 function refrescarTabla() {
