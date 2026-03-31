@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tornea Pro V9.0 - Inteligencia Dual</title>
+    <title>Tornea Pro V9.1 - Bocina Inicio</title>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -22,7 +21,7 @@
 
 <div id="app" class="max-w-md mx-auto p-4 pb-20">
     <header class="flex justify-between items-center mb-4">
-        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V9</h1>
+        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V9.1</h1>
         <div id="fase-info" class="badge text-yellow-400">Inicio</div>
     </header>
 
@@ -65,7 +64,7 @@ let state = {
     pistasReales: [1, 2, 3], 
     tiempoTotal: 150, 
     cronosActivos: false,
-    modificado: false // Nueva bandera para detectar cambios del usuario
+    modificado: false 
 };
 
 function cambiarVistaPistas() {
@@ -114,7 +113,6 @@ function logicaSiguiente() {
 
 function detectarModificacion() {
     state.modificado = true;
-    console.log("Cambio detectado: Se activará el emparejamiento inteligente.");
 }
 
 function finalizarConfig() {
@@ -135,10 +133,8 @@ function finalizarConfig() {
     state.parejas = [];
 
     if (!state.modificado) {
-        // MODO MANUAL: Tal cual se introducen (1-2, 3-4...)
         for (let i = 0; i < pool.length; i += 2) {
-            let p1 = pool[i];
-            let p2 = pool[i+1];
+            let p1 = pool[i]; let p2 = pool[i+1];
             state.parejas.push({
                 id: state.parejas.length,
                 nombres: `${p1.n} (${p1.p}) / ${p2.n} (${p2.p})`,
@@ -146,29 +142,20 @@ function finalizarConfig() {
             });
         }
     } else {
-        // MODO INTELIGENTE: Algoritmo de equilibrio al 100%
         let reveses = pool.filter(j => j.p === 'reves' || j.p === 'poli');
         let drives = pool.filter(j => j.p === 'drive' || (j.p === 'poli' && !reveses.includes(j)));
-
-        // Ordenamos por nivel para ir de extremos a centro
         reveses.sort((a,b) => b.l - a.l);
         drives.sort((a,b) => a.l - b.l);
 
         while (reveses.length > 0 && drives.length > 0) {
             let r = reveses.shift();
-            // Buscamos el drive que mejor sume 100 con este revés
             let idealLvl = 100 - r.l;
             let indexMejorDrive = 0;
             let diffMinima = 100;
-
             drives.forEach((d, idx) => {
                 let diff = Math.abs(d.l - idealLvl);
-                if (diff < diffMinima) {
-                    diffMinima = diff;
-                    indexMejorDrive = idx;
-                }
+                if (diff < diffMinima) { diffMinima = diff; indexMejorDrive = idx; }
             });
-
             let d = drives.splice(indexMejorDrive, 1)[0];
             state.parejas.push({
                 id: state.parejas.length,
@@ -177,12 +164,9 @@ function finalizarConfig() {
             });
         }
     }
-
     renderPantallaJuego();
     mostrarPartidos();
 }
-
-// ... (Resto de funciones: renderPantallaJuego, mostrarPartidos, iniciarCronosSimultaneos, etc., se mantienen de la V8.6) ...
 
 function renderPantallaJuego() {
     document.getElementById('pantalla-dinamica').innerHTML = `
@@ -224,6 +208,10 @@ function mostrarPartidos() {
 function iniciarCronosSimultaneos() {
     if(state.cronosActivos) return;
     state.cronosActivos = true;
+    
+    // 🔥 PITIDO DE INICIO
+    ejecutarBocina();
+
     const btnMaster = document.getElementById('btn-master-play');
     btnMaster.disabled = true; btnMaster.innerText = "⌛ Jugando..."; btnMaster.classList.replace('bg-blue-600', 'bg-slate-700');
     let t = 20 * 60;
@@ -238,6 +226,7 @@ function iniciarCronosSimultaneos() {
         if(t <= 0) {
             clearInterval(interval);
             btnMaster.innerText = "🏁 Fin de Ronda";
+            // 🔥 PITIDO DE FIN
             ejecutarBocina();
             for(let i=0; i<3; i++) {
                 document.getElementById(`status-pista-${i}`).innerText = "⌛ Fin tiempo";
@@ -297,6 +286,7 @@ function hacerSemis() {
 
 function startS(idx) {
     let t = 25 * 60; const btn = document.getElementById(`bs-${idx}`); btn.disabled = true;
+    ejecutarBocina(); // Bocina inicio semi
     const timer = setInterval(() => {
         t--; let m = Math.floor(t/60); let s = t%60;
         document.getElementById(`ts-${idx}`).innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
@@ -305,7 +295,15 @@ function startS(idx) {
 }
 
 function ejecutarBocina() {
-    try { const ctx = new AudioContext(); const o = ctx.createOscillator(); o.type='square'; o.frequency.value=200; o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+1.5); } catch(e){}
+    try { 
+        const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+        const o = ctx.createOscillator(); 
+        o.type='square'; 
+        o.frequency.value=200; 
+        o.connect(ctx.destination); 
+        o.start(); 
+        o.stop(ctx.currentTime + 1.2); 
+    } catch(e){}
 }
 </script>
 </body>
