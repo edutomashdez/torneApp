@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tornea Pro V12.1 - Fix Lógica</title>
+    <title>Tornea Pro V12.2 - Fix Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: system-ui; -webkit-tap-highlight-color: transparent; }
         .card { background: #1e293b; border-radius: 14px; padding: 1.2rem; margin-bottom: 1rem; border: 1px solid #334155; }
-        .btn-green { background: #22c55e; color: white; font-weight: bold; padding: 1rem; border-radius: 10px; width: 100%; border: none; cursor: pointer; display: block; text-align: center; }
+        .btn-green { background: #22c55e; color: white; font-weight: bold; padding: 1rem; border-radius: 10px; width: 100%; border: none; cursor: pointer; text-align: center; }
         .btn-play { background: #3b82f6; color: white; font-weight: 800; padding: 0.6rem; border-radius: 10px; flex: 1; text-transform: uppercase; font-size: 10px; }
         .btn-fast { background: #6366f1; color: white; font-weight: 800; padding: 0.6rem; border-radius: 10px; flex: 1; text-transform: uppercase; font-size: 10px; }
         input, select { background: #0f172a; border: 1px solid #444; padding: 0.5rem; border-radius: 6px; color: white; width: 100%; text-align: center; font-size: 16px; }
         .pista-tag { background: #d97706; color: white; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; }
         .final-tag { background: #be185d; color: white; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; }
-        .toggle-34 { display: flex; align-items: center; justify-content: center; gap: 10px; background: #334155; padding: 10px; border-radius: 10px; margin-top: 10px; }
-        table { border-collapse: collapse; width: 100%; }
+        table { width: 100%; border-collapse: collapse; }
         th, td { padding: 8px 4px; border-bottom: 1px solid #334155; }
     </style>
 </head>
@@ -23,7 +22,7 @@
 
 <div id="app" class="max-w-md mx-auto p-4 pb-20">
     <header class="flex justify-between items-center mb-4">
-        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V12.1</h1>
+        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V12.2</h1>
         <div id="fase-info" class="badge bg-slate-800 px-2 py-1 rounded text-[10px] text-yellow-400 font-bold">Inicio</div>
     </header>
 
@@ -46,13 +45,13 @@
                             <input type="number" id="p-val-1" value="1"> <input type="number" id="p-val-2" value="2"> <input type="number" id="p-val-3" value="3">
                         </div>
                     </div>
-                    <div class="toggle-34">
-                        <span class="text-[10px] uppercase font-bold text-slate-300">¿Tercer y Cuarto Puesto?</span>
+                    <div class="flex items-center justify-center gap-4 bg-slate-800 p-3 rounded-lg">
+                        <span class="text-[10px] uppercase font-bold text-slate-300 text-center">¿3º y 4º Puesto?</span>
                         <input type="checkbox" id="cfg-34" style="width: 20px; height: 20px;" checked>
                     </div>
                 </div>
             </div>
-            <button onclick="logicaSiguiente()" class="btn-green">SIGUIENTE</button>
+            <button onclick="logicaSiguiente()" class="btn-green uppercase tracking-widest">Siguiente</button>
         </div>
     </div>
 </div>
@@ -60,7 +59,8 @@
 <script>
 let state = { 
     parejas: [], ronda: 1, resultados: 0, pistasReales: [1, 2, 3], 
-    tiempoRonda: 20, con34: true, enProgreso: false, modificado: false 
+    tiempoRonda: 20, con34: true, enProgreso: false, modificado: false,
+    partidosRondaActual: [] // Para guardar quién juega en cada pista
 };
 
 function guardarEnDisco() { localStorage.setItem('tornea_v12_backup', JSON.stringify(state)); }
@@ -70,7 +70,7 @@ window.onload = function() {
     if (backup) {
         const saved = JSON.parse(backup);
         if (saved.enProgreso) {
-            document.getElementById('area-recuperacion').innerHTML = `<div class="bg-orange-600 p-3 rounded-lg mb-4 text-center"><p class="text-xs font-bold mb-2 text-white italic">Torneo interrumpido</p><button onclick="restaurarTorneo()" class="bg-white text-orange-600 px-4 py-1 rounded text-[10px] font-bold mr-2">REANUDAR</button><button onclick="borrarCache()" class="bg-black text-white px-4 py-1 rounded text-[10px]">NUEVO</button></div>`;
+            document.getElementById('area-recuperacion').innerHTML = `<div class="bg-orange-600 p-3 rounded-lg mb-4 text-center"><p class="text-xs font-bold mb-2 text-white italic">Torneo interrumpido</p><button onclick="restaurarTorneo()" class="bg-white text-orange-600 px-4 py-1 rounded text-[10px] font-bold mr-2 uppercase">Reanudar</button><button onclick="borrarCache()" class="bg-black text-white px-4 py-1 rounded text-[10px] uppercase">Nuevo</button></div>`;
         }
     }
 };
@@ -93,7 +93,7 @@ function logicaSiguiente() {
     for(let i=0; i<12; i++) {
         html += `<div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50"><div class="flex gap-2 mb-2"><span class="text-[10px] text-slate-500 font-bold">${i+1}</span><input type="text" placeholder="Jugador" class="p-name !text-left h-8 text-sm"></div><div class="flex gap-2"><select class="p-pos bg-slate-700 h-7 text-[10px]" onchange="state.modificado=true"><option value="reves">Revés</option><option value="drive" ${i%2!==0?'selected':''}>Drive</option><option value="poli">Poli</option></select><select class="p-lvl bg-slate-700 h-7 text-[10px]" onchange="state.modificado=true"><option value="25">Nivel 25</option><option value="50" selected>Nivel 50</option><option value="75">Nivel 75</option></select></div></div>`;
     }
-    html += `</div><button onclick="finalizarConfig()" class="btn-green">INICIAR TORNEO</button>`;
+    html += `</div><button onclick="finalizarConfig()" class="btn-green uppercase font-bold tracking-widest">Iniciar Torneo</button>`;
     document.getElementById('pantalla-dinamica').innerHTML = html;
 }
 
@@ -104,11 +104,11 @@ function finalizarConfig() {
     let pool = [];
     names.forEach((n, i) => pool.push({n: n.value || `J${i+1}`, l: parseInt(lvls[i].value), p: poss[i].value }));
     state.parejas = [];
-    if (!state.modificado) { for (let i = 0; i < pool.length; i += 2) state.parejas.push({ nombres: `${pool[i].n} / ${pool[i+1].n}`, pts: 0, dg: 0, pj: 0 }); }
+    if (!state.modificado) { for (let i = 0; i < pool.length; i += 2) state.parejas.push({ id: i/2, nombres: `${pool[i].n} / ${pool[i+1].n}`, pts: 0, dg: 0, pj: 0 }); }
     else {
         let r = pool.filter(j => j.p !== 'drive'); let d = pool.filter(j => j.p === 'drive');
         r.sort((a,b)=>b.l-a.l); d.sort((a,b)=>a.l-b.l);
-        while(r.length && d.length) { let p1=r.shift(); let p2=d.shift(); state.parejas.push({ nombres: `${p1.n} / ${p2.n}`, pts: 0, dg: 0, pj: 0 }); }
+        while(r.length && d.length) { let p1=r.shift(); let p2=d.shift(); state.parejas.push({ id: state.parejas.length, nombres: `${p1.n} / ${p2.n}`, pts: 0, dg: 0, pj: 0 }); }
     }
     state.enProgreso = true; guardarEnDisco(); renderPantallaJuego(); mostrarPartidos();
 }
@@ -121,6 +121,7 @@ function mostrarPartidos() {
     state.resultados = 0; document.getElementById('fase-info').innerText = `Ronda ${state.ronda}/3`;
     const rondas = [[[0,5], [1,4], [2,3]],[[0,3], [5,1], [4,2]],[[0,1], [3,4], [5,2]]];
     const actual = rondas[state.ronda-1];
+    state.partidosRondaActual = actual; // GUARDAR REFERENCIA REAL
     const cont = document.getElementById('partidos-cont'); cont.innerHTML = "";
     actual.forEach((pIds, i) => {
         cont.innerHTML += generarTarjetaPartido(i, state.parejas[pIds[0]], state.parejas[pIds[1]], state.pistasReales[i], state.tiempoRonda);
@@ -131,18 +132,18 @@ function mostrarPartidos() {
 function generarTarjetaPartido(id, p1, p2, pista, tiempo, esFinal = false) {
     return `
     <div class="card border-l-4 ${esFinal?'border-pink-600':'border-green-500'}">
-        <div class="flex justify-between items-center mb-3 text-left">
-            <span class="${esFinal?'final-tag':'pista-tag'}">PISTA ${pista}</span>
-            <span id="t-${id}" class="text-yellow-400 font-mono font-bold">${tiempo}:00</span>
+        <div class="flex justify-between items-center mb-3">
+            <span class="${esFinal?'final-tag':'pista-tag'} uppercase">Pista ${pista}</span>
+            <span id="t-${id}" class="text-yellow-400 font-mono font-bold text-lg">${tiempo}:00</span>
         </div>
         <div class="flex items-center gap-2">
-            <div class="flex-1 text-[10px] font-bold text-left">${p1.nombres}</div>
-            <select id="m-${id}-0" class="w-14 bg-slate-800 h-9 text-sm" disabled>${Array.from({length:16},(_,v)=>`<option value="${v}">${v}</option>`).join('')}</select>
-            <div class="text-[10px] text-slate-500 font-bold">VS</div>
-            <select id="m-${id}-1" class="w-14 bg-slate-800 h-9 text-sm" disabled>${Array.from({length:16},(_,v)=>`<option value="${v}">${v}</option>`).join('')}</select>
-            <div class="flex-1 text-[10px] font-bold text-right">${p2.nombres}</div>
+            <div class="flex-1 text-[11px] font-bold text-left leading-tight text-white">${p1.nombres}</div>
+            <select id="m-${id}-0" class="w-14 bg-slate-800 h-10 text-lg font-bold" disabled>${Array.from({length:16},(_,v)=>`<option value="${v}">${v}</option>`).join('')}</select>
+            <div class="text-[10px] text-slate-500 font-black">VS</div>
+            <select id="m-${id}-1" class="w-14 bg-slate-800 h-10 text-lg font-bold" disabled>${Array.from({length:16},(_,v)=>`<option value="${v}">${v}</option>`).join('')}</select>
+            <div class="flex-1 text-[11px] font-bold text-right leading-tight text-white">${p2.nombres}</div>
         </div>
-        <button onclick="confirmarPista('${id}')" id="b-save-${id}" class="hidden w-full mt-3 py-2 bg-orange-600 rounded text-[10px] font-bold uppercase">Confirmar Resultado</button>
+        <button onclick="confirmarPista('${id}')" id="b-save-${id}" class="hidden w-full mt-4 py-3 bg-orange-600 rounded-lg text-xs font-black uppercase tracking-widest shadow-lg">Confirmar Resultado</button>
     </div>`;
 }
 
@@ -161,49 +162,43 @@ function desbloquearTodo() {
     ejecutarBocina();
 }
 
-function confirmarPista(idx) {
-    // 1. Obtener los IDs de las parejas según la ronda
-    let pIds;
+function confirmarPista(idxPista) {
+    let idPareja1, idPareja2;
+    
+    // DETERMINAR QUÉ PAREJAS JUEGAN SEGÚN LA PANTALLA
     if (state.ronda <= 3) {
-        const rondas = [[[0,5], [1,4], [2,3]],[[0,3], [5,1], [4,2]],[[0,1], [3,4], [5,2]]];
-        pIds = rondas[state.ronda-1][idx];
+        idPareja1 = state.partidosRondaActual[idxPista][0];
+        idPareja2 = state.partidosRondaActual[idxPista][1];
     } else {
-        // En finales, usamos mapeo directo
-        if (idx === 'f') pIds = [0, 1];
-        if (idx === '34') pIds = [2, 3];
+        if (idxPista === 'f') { idPareja1 = state.parejas[0].id; idPareja2 = state.parejas[1].id; }
+        if (idxPista === '34') { idPareja1 = state.parejas[2].id; idPareja2 = state.parejas[3].id; }
     }
 
-    const m0 = parseInt(document.getElementById(`m-${idx}-0`).value);
-    const m1 = parseInt(document.getElementById(`m-${idx}-1`).value);
-    const p0 = state.parejas[pIds[0]]; 
-    const p1 = state.parejas[pIds[1]];
+    // BUSCAR EL OBJETO REAL EN EL ARRAY ORIGINAL POR SU ID
+    const p0 = state.parejas.find(p => p.id == idPareja1);
+    const p1 = state.parejas.find(p => p.id == idPareja2);
 
-    // 2. Lógica de Puntos (3 Ganar, 1 Empate)
-    if (m0 > m1) { 
-        p0.pts += 3; 
-    } else if (m1 > m0) { 
-        p1.pts += 3; 
-    } else { 
-        p0.pts += 1; 
-        p1.pts += 1; 
-    }
+    const m0 = parseInt(document.getElementById(`m-${idxPista}-0`).value);
+    const m1 = parseInt(document.getElementById(`m-${idxPista}-1`).value);
 
-    // 3. Lógica de Diferencia de Juegos (Juegos ganados - Juegos perdidos)
+    // Lógica de Puntos
+    if (m0 > m1) { p0.pts += 3; } 
+    else if (m1 > m0) { p1.pts += 3; } 
+    else { p0.pts += 1; p1.pts += 1; }
+
+    // Diferencia de Juegos
     p0.dg += (m0 - m1);
     p1.dg += (m1 - m0);
-    p0.pj++; 
-    p1.pj++;
+    p0.pj++; p1.pj++;
 
-    // 4. Actualización Visual
-    document.getElementById(`b-save-${idx}`).classList.add('hidden');
+    document.getElementById(`b-save-${idxPista}`).classList.add('hidden');
     state.resultados++; 
     refrescarTabla(); 
     guardarEnDisco();
 
-    // 5. Gestión de paso de ronda
     let limite = (state.ronda > 3) ? (state.con34 ? 2 : 1) : 3;
     if(state.resultados === limite) {
-        document.getElementById('zona-controles').innerHTML = `<button onclick="proximaRonda()" class="btn-green bg-blue-600 mt-4 uppercase text-xs">${state.ronda<3?'Siguiente Ronda':'Torneo Finalizado'}</button>`;
+        document.getElementById('zona-controles').innerHTML = `<button onclick="proximaRonda()" class="btn-green bg-blue-600 mt-4 uppercase text-xs tracking-widest font-black">${state.ronda<3?'Siguiente Ronda':'Torneo Finalizado'}</button>`;
     }
 }
 
@@ -220,28 +215,30 @@ function hacerFaseFinal() {
     document.getElementById('controles-master').innerHTML = `<button onclick="iniciarCronoMaster()" class="btn-play">▶ Iniciar Finales</button><button onclick="desbloquearTodo()" class="btn-fast">⚡ Desbloquear</button>`;
     const cont = document.getElementById('partidos-cont'); cont.innerHTML = "";
     
-    cont.innerHTML += `<p class="text-[9px] font-bold text-pink-500 uppercase tracking-widest text-center mb-1 italic">Gran Final</p>`;
-    cont.innerHTML += generarTarjetaPartido('f', state.parejas[0], state.parejas[1], state.pistasReales[0], 25, true);
+    // Usamos el ID interno de la pareja tras ordenar la tabla de liga
+    const finalistas = [...state.parejas].sort((a,b) => b.pts - a.pts || b.dg - a.dg);
+    
+    cont.innerHTML += `<p class="text-[10px] font-black text-pink-500 uppercase tracking-widest text-center mb-1">Gran Final</p>`;
+    cont.innerHTML += generarTarjetaPartido('f', finalistas[0], finalistas[1], state.pistasReales[0], 25, true);
     
     if(state.con34) {
-        cont.innerHTML += `<p class="text-[9px] font-bold text-blue-400 uppercase tracking-widest text-center mt-4 mb-1 italic">3º y 4º Puesto</p>`;
-        cont.innerHTML += generarTarjetaPartido('34', state.parejas[2], state.parejas[3], state.pistasReales[1], 25, false);
+        cont.innerHTML += `<p class="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center mt-4 mb-1 italic">3º y 4º Puesto</p>`;
+        cont.innerHTML += generarTarjetaPartido('34', finalistas[2], finalistas[3], state.pistasReales[1], 25, false);
     }
-    document.getElementById('zona-controles').innerHTML = `<button onclick="borrarCache()" class="btn-green bg-slate-700 mt-8 text-[10px]">FINALIZAR Y BORRAR DATOS</button>`;
+    document.getElementById('zona-controles').innerHTML = `<button onclick="borrarCache()" class="btn-green bg-slate-700 mt-8 text-[10px] tracking-widest">FINALIZAR Y BORRAR TODO</button>`;
 }
 
 function refrescarTabla() {
-    // Ordenar por Puntos, luego por Diferencia de Juegos (DG)
     state.parejas.sort((a,b) => b.pts - a.pts || b.dg - a.dg);
-    let h = `<table class="w-full text-[9px]"><tr><th class="text-left p-1">PAREJA</th><th class="text-center">PTS</th><th class="text-center">DG</th></tr>`;
+    let h = `<table class="w-full text-[9px]"><tr><th class="text-left p-2">PAREJA</th><th class="text-center">PTS</th><th class="text-center">DG</th></tr>`;
     state.parejas.forEach((p, i) => { 
         let color = i < 4 ? 'text-green-400 font-bold' : 'text-slate-400';
-        h += `<tr class="${color} border-b border-slate-800/50"><td class="p-1 text-left">${p.nombres}</td><td class="text-center">${p.pts}</td><td class="text-center">${p.dg}</td></tr>`; 
+        h += `<tr class="${color} border-b border-slate-800/50"><td class="p-2 text-left leading-tight">${p.nombres}</td><td class="text-center font-bold">${p.pts}</td><td class="text-center">${p.dg > 0 ? '+'+p.dg : p.dg}</td></tr>`; 
     });
     document.getElementById('tabla-puntos').innerHTML = h + `</table>`;
 }
 
-function ejecutarBocina() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.type='square'; o.frequency.value=200; o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 1.2); } catch(e){} }
+function ejecutarBocina() { try { const ctx = new AudioContext(); const o = ctx.createOscillator(); o.type='square'; o.frequency.value=200; o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 1.2); } catch(e){} }
 </script>
 </body>
 </html>
