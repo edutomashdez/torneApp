@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tornea Pro - Gestor de Minis</title>
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui; }
+        .card { background: #1e293b; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #334155; }
+        .btn-green { background: #22c55e; color: white; font-weight: bold; padding: 1rem; border-radius: 12px; }
+        .btn-blue { background: #3b82f6; color: white; font-weight: bold; padding: 1rem; border-radius: 12px; }
+        input, select { background: #0f172a; border: 1px solid #334155; padding: 0.75rem; border-radius: 8px; width: 100%; color: white; }
+        .active-tab { border-bottom: 4px solid #22c55e; color: #22c55e; }
+    </style>
+</head>
+<body>
+
+<div id="app" class="max-w-md mx-auto p-4 pb-24">
+    <header class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-black italic text-green-500">TORNEA PRO</h1>
+        <div id="global-timer" class="text-xl font-mono bg-red-900/30 px-3 py-1 rounded text-red-400 hidden">00:00</div>
+    </header>
+
+    <div id="step-1">
+        <div class="card">
+            <h2 class="text-lg font-bold mb-4 border-b border-slate-700 pb-2">Configuración del Mini</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm text-slate-400">Nº Jugadores (6-32)</label>
+                    <input type="number" id="cfg-jugadores" value="8" min="6" max="32">
+                </div>
+                <div>
+                    <label class="text-sm text-slate-400">Nº Pistas disponibles</label>
+                    <input type="number" id="cfg-pistas" value="2" min="1">
+                </div>
+                <div>
+                    <label class="text-sm text-slate-400">Tiempo total</label>
+                    <select id="cfg-tiempo">
+                        <option value="90">1.5 Horas</option>
+                        <option value="120">2 Horas</option>
+                        <option value="150">2.5 Horas</option>
+                        <option value="0">Sin límite</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-400">Modo de Puntos</label>
+                    <select id="cfg-puntos">
+                        <option value="oro">Punto de Oro</option>
+                        <option value="star">StarPoint</option>
+                        <option value="ventaja">Ventajas</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <button onclick="irAPaso2()" class="w-full btn-green uppercase tracking-widest shadow-lg shadow-green-900/20">Siguiente</button>
+    </div>
+
+    <div id="step-2" class="hidden">
+        <div class="flex justify-between mb-4">
+            <button onclick="window.location.reload()" class="text-slate-400 text-sm">← Volver</button>
+            <span class="text-green-500 font-bold">Modo Inteligente</span>
+        </div>
+        <div id="lista-jugadores" class="space-y-2"></div>
+        <button onclick="generarTorneo()" class="w-full btn-blue mt-6 uppercase">Generar Parejas e Iniciar</button>
+    </div>
+
+    <div id="step-3" class="hidden">
+        <div class="card mb-4 overflow-x-auto">
+            <h3 class="text-xs font-bold uppercase text-slate-500 mb-2">Clasificación Grupos</h3>
+            <div id="tabla-puntos" class="text-sm w-full"></div>
+        </div>
+
+        <div id="pistas-contenedor" class="space-y-4">
+            </div>
+    </div>
+</div>
+
+<script>
+// --- BASE DE DATOS ESTABLE ---
+const db = new Dexie("TorneaApp");
+db.version(1).stores({
+    torneo: 'id, data'
+});
+
+let jugadoresData = [];
+let timerInterval;
+
+// --- FUNCIONES DE NAVEGACIÓN ---
+function irAPaso2() {
+    const num = document.getElementById('cfg-jugadores').value;
+    document.getElementById('step-1').classList.add('hidden');
+    document.getElementById('step-2').classList.remove('hidden');
+    
+    const contenedor = document.getElementById('lista-jugadores');
+    contenedor.innerHTML = "";
+    for(let i=0; i<num; i++) {
+        contenedor.innerHTML += `
+            <div class="card !p-3 flex flex-col gap-2">
+                <input type="text" placeholder="Jugador ${i+1}" class="player-name">
+                <div class="flex gap-2">
+                    <select class="player-pos text-xs">
+                        <option value="reves">Revés</option>
+                        <option value="drive">Drive</option>
+                        <option value="poli">Polivalente</option>
+                    </select>
+                    <select class="player-lvl text-xs">
+                        <option value="25">Nivel 25 (Bajo)</option>
+                        <option value="50" selected>Nivel 50 (Medio)</option>
+                        <option value="75">Nivel 75 (Alto)</option>
+                    </select>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// --- ALGORITMO DE EMPAREJAMIENTO INTELIGENTE ---
+async function generarTorneo() {
+    const names = document.querySelectorAll('.player-name');
+    const positions = document.querySelectorAll('.player-pos');
+    const levels = document.querySelectorAll('.player-lvl');
+    
+    let pool = [];
+    names.forEach((n, i) => {
+        pool.push({
+            nombre: n.value || `Jugador ${i+1}`,
+            pos: positions[i].value,
+            lvl: parseInt(levels[i].value)
+        });
+    });
+
+    // Lógica simple de emparejamiento (Suma 100)
+    // Para este MVP, los ordenamos y emparejamos extremos para equilibrar
+    pool.sort((a,b) => b.lvl - a.lvl);
+    
+    let parejas = [];
+    while(pool.length >= 2) {
+        let p1 = pool.shift();
+        // Buscamos el que mejor le cuadre para sumar 100
+        let idealIndex = pool.findIndex(p => (p1.lvl + p.lvl) <= 110);
+        if(idealIndex === -1) idealIndex = pool.length - 1;
+        
+        let p2 = pool.splice(idealIndex, 1)[0];
+        parejas.push({ 
+            nombres: `${p1.nombre} / ${p2.nombre}`, 
+            lvlTotal: p1.lvl + p2.lvl,
+            puntos: 0, 
+            difJuegos: 0 
+        });
+    }
+
+    iniciarDashboard(parejas);
+}
+
+function iniciarDashboard(parejas) {
+    document.getElementById('step-2').classList.add('hidden');
+    document.getElementById('step-3').classList.remove('hidden');
+    document.getElementById('global-timer').classList.remove('hidden');
+
+    const tiempoTotal = document.getElementById('cfg-tiempo').value;
+    if(tiempoTotal > 0) iniciarCronometro(tiempoTotal * 60);
+    
+    renderPistas(parejas);
+    actualizarTabla(parejas);
+}
+
+function iniciarCronometro(segundos) {
+    let t = segundos;
+    const display = document.getElementById('global-timer');
+    
+    timerInterval = setInterval(() => {
+        let mins = Math.floor(t / 60);
+        let secs = t % 60;
+        display.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        
+        if (t <= 0) {
+            clearInterval(timerInterval);
+            ejecutarBocina();
+        }
+        t--;
+    }, 1000);
+}
+
+function ejecutarBocina() {
+    // Sonido de sistema (beeps) si no hay archivo mp3
+    const context = new AudioContext();
+    const osc = context.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = 220;
+    osc.connect(context.destination);
+    osc.start();
+    setTimeout(() => osc.stop(), 2000);
+    alert("¡TIEMPO FINALIZADO! Introducid resultados.");
+}
+
+function renderPistas(parejas) {
+    const cont = document.getElementById('pistas-contenedor');
+    cont.innerHTML = "";
+    // Generamos enfrentamientos aleatorios para la Ronda 1
+    for(let i=0; i < Math.floor(parejas.length/2); i++) {
+        cont.innerHTML += `
+            <div class="card border-l-4 border-blue-500">
+                <div class="flex justify-between items-center gap-2">
+                    <div class="flex-1 text-sm font-bold">${parejas[i*2].nombres}</div>
+                    <select class="w-16 bg-slate-800 border-none" onchange="guardarResultado()">
+                        ${Array.from({length: 16}, (_, i) => `<option value="${i}">${i}</option>`).join('')}
+                    </select>
+                    <div class="text-xs text-slate-500 italic">vs</div>
+                    <select class="w-16 bg-slate-800 border-none" onchange="guardarResultado()">
+                        ${Array.from({length: 16}, (_, i) => `<option value="${i}">${i}</option>`).join('')}
+                    </select>
+                    <div class="flex-1 text-sm font-bold text-right">${parejas[i*2+1].nombres}</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function actualizarTabla(parejas) {
+    const tabla = document.getElementById('tabla-puntos');
+    let html = `<table class="w-full text-left"><thead><tr><th>Pareja</th><th>Pts</th><th>DG</th></tr></thead><tbody>`;
+    parejas.forEach(p => {
+        html += `<tr class="border-b border-slate-800">
+            <td class="py-2">${p.nombres}</td>
+            <td>${p.puntos}</td>
+            <td>${p.difJuegos}</td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+    tabla.innerHTML = html;
+}
+
+function guardarResultado() {
+    // Aquí disparamos el autoguardado en IndexedDB
+    db.torneo.put({id: 'actual', data: 'snapshot_de_resultados'});
+}
+</script>
+</body>
+</html>
