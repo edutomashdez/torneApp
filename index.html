@@ -1,18 +1,19 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tornea V6 - 12 Jugadores</title>
+    <title>Tornea V7 - Pistas Reales</title>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: system-ui; -webkit-tap-highlight-color: transparent; }
         .card { background: #1e293b; border-radius: 12px; padding: 0.75rem; margin-bottom: 0.75rem; border: 1px solid #334155; }
-        .btn-green { background: #22c55e; color: white; font-weight: bold; padding: 0.8rem; border-radius: 10px; width: 100%; transition: 0.2s; }
-        .btn-green:active { transform: scale(0.95); }
+        .btn-green { background: #22c55e; color: white; font-weight: bold; padding: 0.8rem; border-radius: 10px; width: 100%; }
         input { background: #0f172a; border: 1px solid #444; padding: 0.4rem; border-radius: 6px; color: white; width: 100%; text-align: center; font-size: 14px; }
         .badge { background: #334155; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .pista-tag { background: #d97706; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 900; }
         table { width: 100%; font-size: 0.75rem; }
         th { color: #94a3b8; border-bottom: 1px solid #334155; text-align: left; padding-bottom: 4px; }
         td { padding: 4px 0; border-bottom: 1px solid #1e293b; }
@@ -22,43 +23,70 @@
 
 <div id="app" class="max-w-md mx-auto p-4 pb-20">
     <header class="flex justify-between items-center mb-4">
-        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V6</h1>
-        <div id="fase-info" class="badge text-yellow-400">Ronda 1/3</div>
+        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V7</h1>
+        <div id="fase-info" class="badge text-yellow-400">Configuración</div>
     </header>
 
     <div id="step-1">
-        <h2 class="text-[10px] font-bold mb-3 uppercase text-slate-500 tracking-widest">Nombres y Niveles (12 Personas)</h2>
-        <div id="lista-jugadores" class="grid grid-cols-1 gap-2 mb-4 h-[60vh] overflow-y-auto pr-1"></div>
-        <button onclick="iniciarTodo()" class="btn-green shadow-lg shadow-green-900/20">GENERAR Y EMPEZAR</button>
+        <div class="card">
+            <h2 class="text-[10px] font-bold mb-3 uppercase text-slate-500 tracking-widest text-center">Configuración Inicial</h2>
+            <div class="space-y-4">
+                <p class="text-[10px] text-center text-slate-400 italic">Introduce los números de las pistas (ej: 5, 7, 8)</p>
+                <div class="flex gap-2">
+                    <input type="number" id="pista-1-val" value="1" class="border-orange-500/50">
+                    <input type="number" id="pista-2-val" value="2" class="border-orange-500/50">
+                    <input type="number" id="pista-3-val" value="3" class="border-orange-500/50">
+                </div>
+            </div>
+        </div>
+        <button onclick="irAPaso2()" class="btn-green shadow-lg shadow-green-900/20">CONFIGURAR JUGADORES</button>
     </div>
 
     <div id="step-2" class="hidden">
-        <div class="card bg-slate-900/60">
-            <h3 class="text-[9px] font-bold text-slate-500 mb-2 uppercase">Clasificación (Top 4 a Semis)</h3>
+        <h2 class="text-[10px] font-bold mb-3 uppercase text-slate-500 tracking-widest">Nombres y Niveles (12 Personas)</h2>
+        <div id="lista-jugadores" class="grid grid-cols-1 gap-2 mb-4 h-[60vh] overflow-y-auto pr-1"></div>
+        <button onclick="iniciarTodo()" class="btn-green shadow-lg shadow-green-900/20 uppercase">Generar y Empezar</button>
+    </div>
+
+    <div id="step-3" class="hidden">
+        <div class="card bg-slate-900/60 mb-2">
             <div id="tabla-puntos"></div>
         </div>
-
         <div id="partidos-cont" class="space-y-3"></div>
-        
-        <button id="btn-next" onclick="siguienteRonda()" class="btn-green bg-blue-600 mt-4 hidden italic">SIGUIENTE RONDA (Liga)</button>
-        <button id="btn-finales" onclick="generarSemis()" class="btn-green bg-purple-600 mt-4 hidden italic">GENERAR SEMIFINALES</button>
+        <button id="btn-next" onclick="siguienteRonda()" class="btn-green bg-blue-600 mt-4 hidden uppercase">Siguiente Ronda</button>
+        <button id="btn-finales" onclick="generarSemis()" class="btn-green bg-purple-600 mt-4 hidden uppercase">Generar Semifinales</button>
     </div>
 </div>
 
 <script>
-let state = { parejas: [], ronda: 1, resultados: 0, jugados: [] };
+let state = { 
+    parejas: [], 
+    ronda: 1, 
+    resultados: 0, 
+    pistasReales: [1, 2, 3] 
+};
 
-// Generar inputs
+// Generar inputs jugadores
 const contJug = document.getElementById('lista-jugadores');
 for(let i=0; i<12; i++) {
     contJug.innerHTML += `
         <div class="flex gap-2 items-center bg-slate-800/40 p-2 rounded-lg">
             <span class="text-[10px] text-slate-600 w-4">${i+1}</span>
-            <input type="text" placeholder="Nombre" class="p-name">
+            <input type="text" placeholder="Jugador" class="p-name">
             <select class="p-lvl bg-slate-700 text-[10px] rounded px-1 h-8">
                 <option value="25">25</option><option value="50" selected>50</option><option value="75">75</option>
             </select>
         </div>`;
+}
+
+function irAPaso2() {
+    state.pistasReales = [
+        document.getElementById('pista-1-val').value,
+        document.getElementById('pista-2-val').value,
+        document.getElementById('pista-3-val').value
+    ];
+    document.getElementById('step-1').classList.add('hidden');
+    document.getElementById('step-2').classList.remove('hidden');
 }
 
 function iniciarTodo() {
@@ -67,7 +95,6 @@ function iniciarTodo() {
     let personas = [];
     names.forEach((n,i) => personas.push({n: n.value || `J${i+1}`, l: parseInt(lvls[i].value)}));
     
-    // Emparejamiento Inteligente (Equilibrar 100)
     personas.sort((a,b) => b.l - a.l);
     state.parejas = [];
     while(personas.length > 0) {
@@ -75,8 +102,8 @@ function iniciarTodo() {
         state.parejas.push({ id: state.parejas.length, nombres: `${p1.n} / ${p2.n}`, pts: 0, dg: 0, pj: 0 });
     }
 
-    document.getElementById('step-1').classList.add('hidden');
-    document.getElementById('step-2').classList.remove('hidden');
+    document.getElementById('step-2').classList.add('hidden');
+    document.getElementById('step-3').classList.remove('hidden');
     prepararRonda();
 }
 
@@ -85,11 +112,10 @@ function prepararRonda() {
     document.getElementById('btn-next').classList.add('hidden');
     document.getElementById('fase-info').innerText = `Ronda ${state.ronda}/3`;
     
-    // Calendario optimizado para 3 rondas sin repetir rivales (6 parejas)
     const calendarios = [
-        [[0,5], [1,4], [2,3]], // Ronda 1
-        [[0,3], [5,1], [4,2]], // Ronda 2
-        [[0,1], [3,4], [5,2]]  // Ronda 3
+        [[0,5], [1,4], [2,3]],
+        [[0,3], [5,1], [4,2]],
+        [[0,1], [3,4], [5,2]]
     ];
     
     const actual = calendarios[state.ronda-1];
@@ -99,9 +125,9 @@ function prepararRonda() {
     actual.forEach((pIds, i) => {
         cont.innerHTML += `
             <div class="card border-l-4 border-green-500">
-                <div class="flex justify-between text-[10px] mb-2 font-black uppercase">
-                    <span>Pista ${i+1}</span>
-                    <span id="t-${i}" class="text-yellow-400">20:00</span>
+                <div class="flex justify-between items-center mb-2 font-black uppercase">
+                    <span class="pista-tag">PISTA ${state.pistasReales[i]}</span>
+                    <span id="t-${i}" class="text-yellow-400 text-sm font-mono">20:00</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="flex-1 text-[11px] font-bold leading-tight">${state.parejas[pIds[0]].nombres}</div>
@@ -110,7 +136,7 @@ function prepararRonda() {
                     <input type="number" id="m-${i}-1" class="w-10 bg-slate-800 border-none rounded py-1" value="0">
                     <div class="flex-1 text-[11px] font-bold text-right leading-tight">${state.parejas[pIds[1]].nombres}</div>
                 </div>
-                <button onclick="startT(${i})" id="b-${i}" class="w-full mt-3 py-1.5 bg-blue-600 rounded text-[10px] font-bold uppercase tracking-wider">Iniciar Partido</button>
+                <button onclick="startT(${i})" id="b-${i}" class="w-full mt-3 py-1.5 bg-blue-600 rounded text-[10px] font-bold uppercase tracking-wider">Iniciar Tiempo</button>
             </div>`;
     });
     actualizarTabla();
@@ -119,14 +145,14 @@ function prepararRonda() {
 function startT(idx) {
     let t = 20 * 60;
     const btn = document.getElementById(`b-${idx}`);
-    btn.disabled = true; btn.innerText = "CRONÓMETRO ACTIVO...";
+    btn.disabled = true; btn.innerText = "JUGANDO...";
     const timer = setInterval(() => {
         t--;
         let m = Math.floor(t/60); let s = t%60;
         document.getElementById(`t-${idx}`).innerText = `${m}:${s<10?'0':''}${s}`;
         if(t<=0) {
             clearInterval(timer);
-            btn.disabled = false; btn.innerText = "CONFIRMAR RESULTADO"; 
+            btn.disabled = false; btn.innerText = "CONFIRMAR"; 
             btn.classList.replace('bg-blue-600', 'bg-orange-600');
             btn.onclick = () => save(idx);
             ejecutarBocina();
@@ -172,18 +198,21 @@ function generarSemis() {
     document.getElementById('fase-info').innerText = "SEMIFINALES (25 min)";
     document.getElementById('btn-finales').classList.add('hidden');
     const cont = document.getElementById('partidos-cont');
-    cont.innerHTML = `<p class="text-center text-[10px] text-purple-400 mb-3 font-black uppercase italic tracking-widest">Cruces: 1º vs 4º | 2º vs 3º</p>`;
+    cont.innerHTML = `<p class="text-center text-[10px] text-purple-400 mb-3 font-black uppercase tracking-widest italic">Cruces: 1º vs 4º | 2º vs 3º</p>`;
     
     [ [state.parejas[0], state.parejas[3]], [state.parejas[1], state.parejas[2]] ].forEach((p, i) => {
         cont.innerHTML += `
             <div class="card border-l-4 border-purple-500">
-                <div class="flex justify-between text-[9px] mb-2 font-bold uppercase"><span>SEMIFINAL ${i+1}</span><span id="ts-${i}">25:00</span></div>
-                <div class="flex items-center gap-2">
-                    <div class="flex-1 text-[11px] font-bold">${p[0].nombres}</div>
-                    <div class="badge bg-purple-900/40">VS</div>
-                    <div class="flex-1 text-[11px] font-bold text-right">${p[1].nombres}</div>
+                <div class="flex justify-between items-center mb-2 font-bold uppercase">
+                    <span class="pista-tag !bg-purple-600">PISTA ${state.pistasReales[i]}</span>
+                    <span id="ts-${i}" class="text-yellow-400 text-sm font-mono">25:00</span>
                 </div>
-                <button onclick="startSemiT(${i})" id="bs-${i}" class="w-full mt-3 py-1.5 bg-purple-600 rounded text-[10px] font-bold uppercase">Iniciar Semifinal</button>
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 text-[11px] font-bold leading-tight">${p[0].nombres}</div>
+                    <div class="text-[9px] text-slate-500 italic">vs</div>
+                    <div class="flex-1 text-[11px] font-bold text-right leading-tight">${p[1].nombres}</div>
+                </div>
+                <button onclick="startSemiT(${i})" id="bs-${i}" class="w-full mt-3 py-1.5 bg-purple-600 rounded text-[10px] font-bold uppercase tracking-wider">Iniciar Semifinal</button>
             </div>`;
     });
 }
@@ -198,9 +227,9 @@ function startSemiT(idx) {
         document.getElementById(`ts-${idx}`).innerText = `${m}:${s<10?'0':''}${s}`;
         if(t<=0) {
             clearInterval(timer);
-            btn.innerText = "FINALIZADO - IR A FINAL";
-            btn.disabled = false;
-            btn.onclick = () => alert("Introduce el resultado mentalmente y lanza la Final a un Set.");
+            btn.innerText = "FINALIZADO";
+            btn.disabled = true;
+            btn.className = "w-full mt-3 py-1.5 bg-slate-700 rounded text-[10px] text-slate-500";
             ejecutarBocina();
         }
     }, 1000);
@@ -208,8 +237,8 @@ function startSemiT(idx) {
 
 function ejecutarBocina() {
     const ctx = new AudioContext(); const o = ctx.createOscillator();
-    o.type='square'; o.frequency.value=150; o.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime+2);
+    o.type='square'; o.frequency.value=180; o.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime+1.5);
 }
 </script>
 </body>
