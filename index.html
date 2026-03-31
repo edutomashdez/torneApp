@@ -4,89 +4,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tornea V7 - Pistas Reales</title>
+    <title>Tornea V8 - Gestión Pistas</title>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: system-ui; -webkit-tap-highlight-color: transparent; }
-        .card { background: #1e293b; border-radius: 12px; padding: 0.75rem; margin-bottom: 0.75rem; border: 1px solid #334155; }
+        .card { background: #1e293b; border-radius: 12px; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid #334155; }
         .btn-green { background: #22c55e; color: white; font-weight: bold; padding: 0.8rem; border-radius: 10px; width: 100%; }
         input { background: #0f172a; border: 1px solid #444; padding: 0.4rem; border-radius: 6px; color: white; width: 100%; text-align: center; font-size: 14px; }
         .badge { background: #334155; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
         .pista-tag { background: #d97706; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 900; }
-        table { width: 100%; font-size: 0.75rem; }
-        th { color: #94a3b8; border-bottom: 1px solid #334155; text-align: left; padding-bottom: 4px; }
-        td { padding: 4px 0; border-bottom: 1px solid #1e293b; }
+        .checkbox-custom { width: 18px; height: 18px; accent-color: #22c55e; }
     </style>
 </head>
 <body>
 
 <div id="app" class="max-w-md mx-auto p-4 pb-20">
     <header class="flex justify-between items-center mb-4">
-        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V7</h1>
+        <h1 class="text-xl font-black text-green-500 italic uppercase">Tornea Pro V8</h1>
         <div id="fase-info" class="badge text-yellow-400">Configuración</div>
     </header>
 
     <div id="step-1">
         <div class="card">
-            <h2 class="text-[10px] font-bold mb-3 uppercase text-slate-500 tracking-widest text-center">Configuración Inicial</h2>
+            <h2 class="text-[10px] font-bold mb-4 uppercase text-slate-500 tracking-widest">Ajustes del Torneo</h2>
             <div class="space-y-4">
-                <p class="text-[10px] text-center text-slate-400 italic">Introduce los números de las pistas (ej: 5, 7, 8)</p>
-                <div class="flex gap-2">
-                    <input type="number" id="pista-1-val" value="1" class="border-orange-500/50">
-                    <input type="number" id="pista-2-val" value="2" class="border-orange-500/50">
-                    <input type="number" id="pista-3-val" value="3" class="border-orange-500/50">
+                <div>
+                    <label class="text-[10px] text-slate-400 block mb-1">Nº JUGADORES (6 Parejas)</label>
+                    <input type="number" id="cfg-jugadores" value="12" readonly class="opacity-50">
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-400 block mb-1">TIEMPO TOTAL (MIN)</label>
+                    <input type="number" id="cfg-tiempo" value="150">
+                </div>
+                
+                <div class="border-t border-slate-700 pt-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="text-[10px] text-slate-400 uppercase">Configuración de Pistas</label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-slate-300">Correlativas</span>
+                            <input type="checkbox" id="pistas-correlativas" checked onchange="togglePistas()" class="checkbox-custom">
+                        </div>
+                    </div>
+                    
+                    <div id="pistas-manuales" class="flex gap-2 hidden">
+                        <input type="number" id="p-val-1" placeholder="Pista A" class="border-orange-500/30">
+                        <input type="number" id="p-val-2" placeholder="Pista B" class="border-orange-500/30">
+                        <input type="number" id="p-val-3" placeholder="Pista C" class="border-orange-500/30">
+                    </div>
+                    <p id="pistas-auto-msg" class="text-[10px] text-green-500 italic text-center">Se asignarán pistas 1, 2 y 3 automáticamente.</p>
                 </div>
             </div>
         </div>
-        <button onclick="irAPaso2()" class="btn-green shadow-lg shadow-green-900/20">CONFIGURAR JUGADORES</button>
+        <button onclick="irAPaso2()" class="btn-green shadow-lg shadow-green-900/20">SIGUIENTE</button>
     </div>
 
     <div id="step-2" class="hidden">
-        <h2 class="text-[10px] font-bold mb-3 uppercase text-slate-500 tracking-widest">Nombres y Niveles (12 Personas)</h2>
+        <h2 class="text-[10px] font-bold mb-3 uppercase text-slate-500 tracking-widest text-center">Nombres y Niveles</h2>
         <div id="lista-jugadores" class="grid grid-cols-1 gap-2 mb-4 h-[60vh] overflow-y-auto pr-1"></div>
-        <button onclick="iniciarTodo()" class="btn-green shadow-lg shadow-green-900/20 uppercase">Generar y Empezar</button>
+        <button onclick="iniciarTodo()" class="btn-green shadow-lg shadow-green-900/20 uppercase">Empezar Torneo</button>
     </div>
 
     <div id="step-3" class="hidden">
         <div class="card bg-slate-900/60 mb-2">
-            <div id="tabla-puntos"></div>
+            <div id="tabla-puntos" class="text-[11px]"></div>
         </div>
         <div id="partidos-cont" class="space-y-3"></div>
         <button id="btn-next" onclick="siguienteRonda()" class="btn-green bg-blue-600 mt-4 hidden uppercase">Siguiente Ronda</button>
-        <button id="btn-finales" onclick="generarSemis()" class="btn-green bg-purple-600 mt-4 hidden uppercase">Generar Semifinales</button>
+        <button id="btn-finales" onclick="generarSemis()" class="btn-green bg-purple-600 mt-4 hidden uppercase">Ir a Semifinales</button>
     </div>
 </div>
 
 <script>
-let state = { 
-    parejas: [], 
-    ronda: 1, 
-    resultados: 0, 
-    pistasReales: [1, 2, 3] 
-};
+let state = { parejas: [], ronda: 1, resultados: 0, pistasReales: [1, 2, 3] };
 
-// Generar inputs jugadores
-const contJug = document.getElementById('lista-jugadores');
-for(let i=0; i<12; i++) {
-    contJug.innerHTML += `
-        <div class="flex gap-2 items-center bg-slate-800/40 p-2 rounded-lg">
-            <span class="text-[10px] text-slate-600 w-4">${i+1}</span>
-            <input type="text" placeholder="Jugador" class="p-name">
-            <select class="p-lvl bg-slate-700 text-[10px] rounded px-1 h-8">
-                <option value="25">25</option><option value="50" selected>50</option><option value="75">75</option>
-            </select>
-        </div>`;
+function togglePistas() {
+    const isChecked = document.getElementById('pistas-correlativas').checked;
+    document.getElementById('pistas-manuales').classList.toggle('hidden', isChecked);
+    document.getElementById('pistas-auto-msg').classList.toggle('hidden', !isChecked);
 }
 
 function irAPaso2() {
-    state.pistasReales = [
-        document.getElementById('pista-1-val').value,
-        document.getElementById('pista-2-val').value,
-        document.getElementById('pista-3-val').value
-    ];
+    const isCorrelativas = document.getElementById('pistas-correlativas').checked;
+    if(isCorrelativas) {
+        state.pistasReales = [1, 2, 3];
+    } else {
+        state.pistasReales = [
+            document.getElementById('p-val-1').value || 1,
+            document.getElementById('p-val-2').value || 2,
+            document.getElementById('p-val-3').value || 3
+        ];
+    }
+    
     document.getElementById('step-1').classList.add('hidden');
     document.getElementById('step-2').classList.remove('hidden');
+    
+    // Generar inputs jugadores
+    const contJug = document.getElementById('lista-jugadores');
+    contJug.innerHTML = "";
+    for(let i=0; i<12; i++) {
+        contJug.innerHTML += `
+            <div class="flex gap-2 items-center bg-slate-800/40 p-2 rounded-lg">
+                <span class="text-[10px] text-slate-600 w-4">${i+1}</span>
+                <input type="text" placeholder="Jugador" class="p-name">
+                <select class="p-lvl bg-slate-700 text-[10px] rounded px-1 h-8">
+                    <option value="25">25</option><option value="50" selected>50</option><option value="75">75</option>
+                </select>
+            </div>`;
+    }
 }
 
 function iniciarTodo() {
@@ -95,6 +120,7 @@ function iniciarTodo() {
     let personas = [];
     names.forEach((n,i) => personas.push({n: n.value || `J${i+1}`, l: parseInt(lvls[i].value)}));
     
+    // Emparejamiento Inteligente
     personas.sort((a,b) => b.l - a.l);
     state.parejas = [];
     while(personas.length > 0) {
@@ -125,14 +151,14 @@ function prepararRonda() {
     actual.forEach((pIds, i) => {
         cont.innerHTML += `
             <div class="card border-l-4 border-green-500">
-                <div class="flex justify-between items-center mb-2 font-black uppercase">
+                <div class="flex justify-between items-center mb-2">
                     <span class="pista-tag">PISTA ${state.pistasReales[i]}</span>
-                    <span id="t-${i}" class="text-yellow-400 text-sm font-mono">20:00</span>
+                    <span id="t-${i}" class="text-yellow-400 font-mono text-sm">20:00</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="flex-1 text-[11px] font-bold leading-tight">${state.parejas[pIds[0]].nombres}</div>
                     <input type="number" id="m-${i}-0" class="w-10 bg-slate-800 border-none rounded py-1" value="0">
-                    <div class="text-[9px] text-slate-500 italic">vs</div>
+                    <div class="text-[9px] text-slate-500">vs</div>
                     <input type="number" id="m-${i}-1" class="w-10 bg-slate-800 border-none rounded py-1" value="0">
                     <div class="flex-1 text-[11px] font-bold text-right leading-tight">${state.parejas[pIds[1]].nombres}</div>
                 </div>
@@ -145,101 +171,4 @@ function prepararRonda() {
 function startT(idx) {
     let t = 20 * 60;
     const btn = document.getElementById(`b-${idx}`);
-    btn.disabled = true; btn.innerText = "JUGANDO...";
-    const timer = setInterval(() => {
-        t--;
-        let m = Math.floor(t/60); let s = t%60;
-        document.getElementById(`t-${idx}`).innerText = `${m}:${s<10?'0':''}${s}`;
-        if(t<=0) {
-            clearInterval(timer);
-            btn.disabled = false; btn.innerText = "CONFIRMAR"; 
-            btn.classList.replace('bg-blue-600', 'bg-orange-600');
-            btn.onclick = () => save(idx);
-            ejecutarBocina();
-        }
-    }, 1000);
-}
-
-function save(idx) {
-    const calendarios = [[[0,5], [1,4], [2,3]],[[0,3], [5,1], [4,2]],[[0,1], [3,4], [5,2]]];
-    const pIds = calendarios[state.ronda-1][idx];
-    const m0 = parseInt(document.getElementById(`m-${idx}-0`).value);
-    const m1 = parseInt(document.getElementById(`m-${idx}-1`).value);
-    
-    const p0 = state.parejas[pIds[0]]; const p1 = state.parejas[pIds[1]];
-    if(m0 > m1) p0.pts += 3; else if(m1 > m0) p1.pts += 3; else { p0.pts += 1; p1.pts += 1; }
-    p0.dg += (m0-m1); p1.dg += (m1-m0); p0.pj++; p1.pj++;
-    
-    document.getElementById(`b-${idx}`).disabled = true;
-    document.getElementById(`b-${idx}`).innerText = "✓ GUARDADO";
-    document.getElementById(`b-${idx}`).className = "w-full mt-3 py-1.5 bg-slate-700 rounded text-[10px] text-slate-500 font-bold";
-    
-    state.resultados++;
-    actualizarTabla();
-    if(state.resultados === 3) {
-        if(state.ronda < 3) document.getElementById('btn-next').classList.remove('hidden');
-        else document.getElementById('btn-finales').classList.remove('hidden');
-    }
-}
-
-function siguienteRonda() { state.ronda++; prepararRonda(); }
-
-function actualizarTabla() {
-    state.parejas.sort((a,b) => b.pts - a.pts || b.dg - a.dg);
-    let h = `<table><tr><th>PAREJA</th><th>PTS</th><th>DG</th><th>PJ</th></tr>`;
-    state.parejas.forEach((p, i) => {
-        let highlight = i < 4 ? 'text-green-400 font-bold' : 'text-slate-400';
-        h += `<tr class="${highlight}"><td>${p.nombres}</td><td>${p.pts}</td><td>${p.dg}</td><td>${p.pj}</td></tr>`;
-    });
-    document.getElementById('tabla-puntos').innerHTML = h + `</table>`;
-}
-
-function generarSemis() {
-    document.getElementById('fase-info').innerText = "SEMIFINALES (25 min)";
-    document.getElementById('btn-finales').classList.add('hidden');
-    const cont = document.getElementById('partidos-cont');
-    cont.innerHTML = `<p class="text-center text-[10px] text-purple-400 mb-3 font-black uppercase tracking-widest italic">Cruces: 1º vs 4º | 2º vs 3º</p>`;
-    
-    [ [state.parejas[0], state.parejas[3]], [state.parejas[1], state.parejas[2]] ].forEach((p, i) => {
-        cont.innerHTML += `
-            <div class="card border-l-4 border-purple-500">
-                <div class="flex justify-between items-center mb-2 font-bold uppercase">
-                    <span class="pista-tag !bg-purple-600">PISTA ${state.pistasReales[i]}</span>
-                    <span id="ts-${i}" class="text-yellow-400 text-sm font-mono">25:00</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="flex-1 text-[11px] font-bold leading-tight">${p[0].nombres}</div>
-                    <div class="text-[9px] text-slate-500 italic">vs</div>
-                    <div class="flex-1 text-[11px] font-bold text-right leading-tight">${p[1].nombres}</div>
-                </div>
-                <button onclick="startSemiT(${i})" id="bs-${i}" class="w-full mt-3 py-1.5 bg-purple-600 rounded text-[10px] font-bold uppercase tracking-wider">Iniciar Semifinal</button>
-            </div>`;
-    });
-}
-
-function startSemiT(idx) {
-    let t = 25 * 60;
-    const btn = document.getElementById(`bs-${idx}`);
-    btn.disabled = true;
-    const timer = setInterval(() => {
-        t--;
-        let m = Math.floor(t/60); let s = t%60;
-        document.getElementById(`ts-${idx}`).innerText = `${m}:${s<10?'0':''}${s}`;
-        if(t<=0) {
-            clearInterval(timer);
-            btn.innerText = "FINALIZADO";
-            btn.disabled = true;
-            btn.className = "w-full mt-3 py-1.5 bg-slate-700 rounded text-[10px] text-slate-500";
-            ejecutarBocina();
-        }
-    }, 1000);
-}
-
-function ejecutarBocina() {
-    const ctx = new AudioContext(); const o = ctx.createOscillator();
-    o.type='square'; o.frequency.value=180; o.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime+1.5);
-}
-</script>
-</body>
-</html>
+    btn.disabled = true; btn.innerText = "
